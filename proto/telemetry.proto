@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package telemetry;
+
+option java_package = "com.distro.proto";
+option java_outer_classname = "TelemetryProto";
+option java_multiple_files = true;
+
+// ─────────────────────────────────────────────
+// Core data structure: one latency measurement
+// ─────────────────────────────────────────────
+message LatencyMetric {
+  string probe_id        = 1;
+  string target_host     = 2;
+  double latency_ms      = 3;
+  int64  timestamp_unix  = 4;
+  string region          = 5;
+  string probe_type      = 6;
+  int32  sequence_number = 7;
+}
+
+// ─────────────────────────────────────────────
+// Acknowledgement from collector back to probe
+// ─────────────────────────────────────────────
+message CollectorAck {
+  bool   received       = 1;
+  string message        = 2;
+  int64  server_time    = 3;
+  int32  metrics_stored = 4;
+}
+
+// ─────────────────────────────────────────────
+// Anomaly alert from ML analytics layer
+// ─────────────────────────────────────────────
+message AnomalyAlert {
+  string probe_id      = 1;
+  double latency_ms    = 2;
+  double anomaly_score = 3;
+  string severity      = 4;
+  int64  detected_at   = 5;
+}
+
+// ─────────────────────────────────────────────
+// The gRPC service
+// ─────────────────────────────────────────────
+service TelemetryService {
+  rpc StreamMetrics (stream LatencyMetric) returns (CollectorAck);
+}

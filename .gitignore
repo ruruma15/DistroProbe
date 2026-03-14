@@ -22,3 +22,21 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+
+# Go
+probe-go/bin/
+
+# Maven
+probe-java/target/
+
+# IDE
+.idea/
+.vscode/
+*.iml
