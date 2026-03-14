@@ -5,6 +5,7 @@ package telemetry;
 option java_package = "com.distro.proto";
 option java_outer_classname = "TelemetryProto";
 option java_multiple_files = true;
+option go_package = "github.com/ruruma15/distro-probe/probe-go/proto";
 
 // ─────────────────────────────────────────────
 // Core data structure: one latency measurement
