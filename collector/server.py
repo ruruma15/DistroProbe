@@ -8,10 +8,10 @@ from concurrent import futures
 from prometheus_client import start_http_server, Counter, Histogram, Gauge
 
 # Add generated stubs to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'generated'))
+sys.path.insert(0, '/app')
 
-from python import telemetry_pb2
-from python import telemetry_pb2_grpc
+import telemetry_pb2
+import telemetry_pb2_grpc
 import redis
 
 # ── Logging ───────────────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ GRPC_PORT       = int(os.getenv('GRPC_PORT',       '50051'))
 REDIS_HOST      = os.getenv('REDIS_HOST',           'localhost')
 REDIS_PORT      = int(os.getenv('REDIS_PORT',       '6379'))
 PROMETHEUS_PORT = int(os.getenv('PROMETHEUS_PORT',  '8000'))
-REDIS_TTL       = int(os.getenv('REDIS_TTL',        '3600'))  # 1 hour
+REDIS_TTL       = int(os.getenv('REDIS_TTL',        '3600'))
 
 # ── Prometheus metrics ────────────────────────────────────────────────────
 metrics_received = Counter(
@@ -80,13 +80,12 @@ class TelemetryServicer(telemetry_pb2_grpc.TelemetryServiceServicer):
         batch_start    = time.time()
 
         try:
-            pipe = self.redis.pipeline()  # batch Redis writes for performance
+            pipe = self.redis.pipeline()
 
             for metric in request_iterator:
                 if metric.latency_ms <= 0:
                     continue
 
-                # Store latest reading per probe (overwrites previous)
                 key  = f"probe:latest:{metric.probe_id}"
                 data = {
                     "probe_id":        metric.probe_id,
@@ -100,15 +99,11 @@ class TelemetryServicer(telemetry_pb2_grpc.TelemetryServiceServicer):
                 }
                 pipe.setex(key, REDIS_TTL, json.dumps(data))
 
-                # Append to time-series list (keep last 1000 per probe)
                 ts_key = f"probe:timeseries:{metric.probe_id}"
                 pipe.lpush(ts_key, json.dumps(data))
                 pipe.ltrim(ts_key, 0, 999)
-
-                # Track unique probes
                 pipe.sadd("probes:active", metric.probe_id)
 
-                # Update Prometheus metrics
                 metrics_received.labels(
                     probe_id=metric.probe_id,
                     probe_type=metric.probe_type,
@@ -121,10 +116,8 @@ class TelemetryServicer(telemetry_pb2_grpc.TelemetryServiceServicer):
 
                 metrics_stored += 1
 
-            # Execute all Redis writes in one round trip
             pipe.execute()
 
-            # Update active probe count
             probe_count = self.redis.scard("probes:active")
             active_probes.set(probe_count)
 
@@ -155,11 +148,9 @@ class TelemetryServicer(telemetry_pb2_grpc.TelemetryServiceServicer):
 def serve():
     redis_client = connect_redis()
 
-    # Start Prometheus metrics endpoint
     start_http_server(PROMETHEUS_PORT)
     log.info(f"Prometheus metrics at http://localhost:{PROMETHEUS_PORT}")
 
-    # Start gRPC server
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10),
         options=[

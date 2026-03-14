@@ -1,0 +1,114 @@
+version: '3.8'
+
+networks:
+  distro-net:
+    driver: bridge
+
+services:
+
+  # ── Redis ──────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: distro-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - distro-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Python Collector ───────────────────────────────────────────────────
+  collector:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: distro-collector
+    ports:
+      - "50051:50051"   # gRPC
+      - "8000:8000"     # Prometheus metrics
+    environment:
+      - GRPC_PORT=50051
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PROMETHEUS_PORT=8000
+    networks:
+      - distro-net
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Java Probe ─────────────────────────────────────────────────────────
+  probe-java:
+    build:
+      context: probe-java
+      dockerfile: Dockerfile
+    container_name: distro-probe-java
+    environment:
+      - COLLECTOR_HOST=collector
+      - COLLECTOR_PORT=50051
+      - PROBE_ID=java-probe-us-east
+      - REGION=us-east-1
+      - BUFFER_CAPACITY=1024
+      - FLUSH_INTERVAL=50
+      - MEASURE_DELAY_MS=100
+    networks:
+      - distro-net
+    depends_on:
+      - collector
+
+  # ── Go Probe ───────────────────────────────────────────────────────────
+  probe-go:
+    build:
+      context: probe-go
+      dockerfile: Dockerfile
+    container_name: distro-probe-go
+    environment:
+      - COLLECTOR_HOST=collector
+      - COLLECTOR_PORT=50051
+      - PROBE_ID=go-probe-us-west
+      - REGION=us-west-1
+      - BUFFER_CAPACITY=1024
+      - FLUSH_INTERVAL=50
+      - MEASURE_DELAY_MS=100
+    networks:
+      - distro-net
+    depends_on:
+      - collector
+
+  # ── Analytics ──────────────────────────────────────────────────────────
+  analytics:
+    build:
+      context: analytics
+      dockerfile: Dockerfile
+    container_name: distro-analytics
+    ports:
+      - "8001:8001"     # Prometheus metrics
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PROMETHEUS_PORT=8001
+      - RETRAIN_EVERY=300
+      - ANALYSIS_INTERVAL=10
+      - MIN_TRAIN_SAMPLES=100
+    networks:
+      - distro-net
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Prometheus ─────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: distro-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - distro-net
+    depends_on:
+      - collector
+      - analytics

@@ -1,12 +1,11 @@
 FROM maven:3.9-eclipse-temurin-17 AS builder
 WORKDIR /app
 COPY pom.xml .
-RUN mvn dependency:resolve -q
 COPY src ./src
-COPY ../proto ../proto
-RUN mvn package -q -DskipTests
+COPY proto ./proto
+RUN mvn generate-sources package -q -DskipTests
 
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 COPY --from=builder /app/target/probe-java-1.0-SNAPSHOT.jar app.jar
 ENV COLLECTOR_HOST=collector

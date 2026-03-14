@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: 'collector'
+    static_configs:
+      - targets: ['collector:8000']
+
+  - job_name: 'analytics'
+    static_configs:
+      - targets: ['analytics:8001']
