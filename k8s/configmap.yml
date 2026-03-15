@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: distro-config
+  namespace: distro-probe
+data:
+  COLLECTOR_HOST: "collector-service"
+  COLLECTOR_PORT: "50051"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  BUFFER_CAPACITY: "1024"
+  FLUSH_INTERVAL: "50"
+  MEASURE_DELAY_MS: "100"
+  RETRAIN_EVERY: "300"
+  ANALYSIS_INTERVAL: "10"
+  MIN_TRAIN_SAMPLES: "100"
