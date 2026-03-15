@@ -1,0 +1,5 @@
+redis==7.0.1
+grpcio==1.78.0
+grpcio-tools==1.78.0
+protobuf==6.33.5
+numpy==1.24.3
