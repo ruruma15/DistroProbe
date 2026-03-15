@@ -8,8 +8,10 @@ A high-performance distributed telemetry system that continuously measures netwo
 ```
 [Java Probe] ──┐
                ├──► [gRPC Collector] ──► [Redis] ──► [LSTM Analytics]
-[Go Probe]  ──┘           │                                  │
-                           └──► [Prometheus] ──► [Grafana Dashboard]
+[Go Probe]   ──┘           │                                 │
+                           └──► [Prometheus] ◄───────────────┘
+                                     │
+                                     └──► [Grafana Dashboard]
 ```
 
 - **Java Probe** — measures latency using a pre-allocated Circular Buffer (zero GC pressure), streams metrics via gRPC client-side streaming
