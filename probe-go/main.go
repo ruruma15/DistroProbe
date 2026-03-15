@@ -19,9 +19,9 @@ var (
 )
 
 var targetHosts = []string{
-	"8.8.4.4",       // Google DNS secondary
-	"9.9.9.9",       // Quad9 DNS
-	"1.0.0.1",       // Cloudflare secondary
+	"8.8.8.8",       // Google DNS primary
+	"1.1.1.1",       // Cloudflare DNS
+	"208.67.222.222", // OpenDNS
 }
 
 func main() {

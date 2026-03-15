@@ -1,0 +1,172 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, rate(distro_latency_ms_bucket[1m]))",
+          "legendFormat": "p99 {{probe_id}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(distro_latency_ms_bucket[1m]))",
+          "legendFormat": "p50 {{probe_id}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Live Latency per Probe",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 200 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, rate(distro_latency_ms_bucket[1m]))",
+          "legendFormat": "p99 {{probe_id}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(distro_latency_ms_bucket[1m]))",
+          "legendFormat": "p95 {{probe_id}}",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(distro_latency_ms_bucket[1m]))",
+          "legendFormat": "p50 {{probe_id}}",
+          "refId": "C"
+        }
+      ],
+      "title": "Latency Percentiles (p50 / p95 / p99)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.5 },
+              { "color": "red", "value": 0.75 }
+            ]
+          },
+          "min": 0, "max": 1, "unit": "percentunit"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 3,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [
+        {
+          "expr": "distro_anomaly_score",
+          "legendFormat": "{{probe_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "LSTM Anomaly Score per Probe",
+      "type": "gauge"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 3 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
+      "id": 4,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "targets": [
+        {
+          "expr": "distro_active_probes",
+          "legendFormat": "Active Probes",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Probes",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
+      "id": 5,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "targets": [
+        {
+          "expr": "rate(distro_metrics_received_total[1m]) * 60",
+          "legendFormat": "{{probe_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Metrics/min per Probe",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "default" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "id": 6,
+      "targets": [
+        {
+          "expr": "increase(distro_anomalies_detected_total[5m])",
+          "legendFormat": "{{probe_id}} [{{severity}}]",
+          "refId": "A"
+        }
+      ],
+      "title": "Anomalies Detected (5m window)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "tags": ["distro-probe", "telemetry"],
+  "time": { "from": "now-15m", "to": "now" },
+  "timezone": "browser",
+  "title": "DistroProbe — Network Telemetry",
+  "uid": "distro-probe-v1",
+  "version": 1
+}
