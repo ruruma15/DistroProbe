@@ -8,7 +8,7 @@ A high-performance distributed telemetry system that continuously measures netwo
 ```
 [Java Probe] ──┐
                ├──► [gRPC Collector] ──► [Redis] ──► [LSTM Analytics]
-[Go Probe]  ──┘           │                                │
+[Go Probe]  ──┘           │                                  │
                            └──► [Prometheus] ──► [Grafana Dashboard]
 ```
 
