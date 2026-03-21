@@ -7,15 +7,14 @@ import (
 	"time"
 )
 
-// MeasurementResult holds a single latency reading.
+// one latency reading
 type MeasurementResult struct {
 	Host      string
 	LatencyMs float64
 	Success   bool
 }
 
-// ConcurrentMeasurer measures latency to multiple hosts simultaneously
-// using goroutines — Go's key advantage over Java for this use case.
+// fires all host measurements at once using goroutines
 type ConcurrentMeasurer struct {
 	targetHosts []string
 	timeoutMs   time.Duration
@@ -28,8 +27,7 @@ func NewConcurrentMeasurer(hosts []string, timeoutMs int) *ConcurrentMeasurer {
 	}
 }
 
-// MeasureAll fires goroutines concurrently for every host and collects results.
-// This is the core Go advantage: all hosts measured in parallel, not sequentially.
+// measure all hosts at the same time, collect when done
 func (m *ConcurrentMeasurer) MeasureAll() []MeasurementResult {
 	results := make([]MeasurementResult, len(m.targetHosts))
 	var wg sync.WaitGroup
@@ -46,14 +44,13 @@ func (m *ConcurrentMeasurer) MeasureAll() []MeasurementResult {
 	return results
 }
 
-// measureHost performs a TCP dial to port 80 and times the connection.
+// TCP connect to port 80, return elapsed time
 func (m *ConcurrentMeasurer) measureHost(host string) MeasurementResult {
 	address := fmt.Sprintf("%s:80", host)
 	start := time.Now()
 
 	conn, err := net.DialTimeout("tcp", address, m.timeoutMs)
 	if err != nil {
-		// Fallback: try ICMP-style reachability
 		_, err2 := net.ResolveIPAddr("ip", host)
 		if err2 != nil {
 			return MeasurementResult{Host: host, LatencyMs: -1, Success: false}

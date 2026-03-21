@@ -4,12 +4,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from model import LSTMAutoencoder
 
-
+# trains the model and scores new sequences against it
 class AnomalyTrainer:
-    """
-    Trains the LSTM Autoencoder and scores anomalies using
-    reconstruction error (MSE between input and reconstructed output).
-    """
 
     def __init__(self, seq_len=30, hidden_size=64, num_layers=2,
                  lr=0.001, epochs=50, batch_size=32):
@@ -43,7 +39,7 @@ class AnomalyTrainer:
 
     def train(self, latency_values: list):
         if len(latency_values) < self.seq_len + 10:
-            print(f"[Trainer] Not enough data to train ({len(latency_values)} samples, need {self.seq_len + 10})")
+            print(f"[Trainer] Not enough data ({len(latency_values)} samples, need {self.seq_len + 10})")
             return False
 
         data       = np.array(latency_values, dtype=np.float32)
@@ -68,9 +64,9 @@ class AnomalyTrainer:
             if (epoch + 1) % 10 == 0:
                 print(f"[Trainer] Epoch {epoch+1}/{self.epochs} | loss={total_loss/len(loader):.6f}")
 
-        # Set anomaly threshold = mean reconstruction error + 3 std deviations
+        # threshold = mean + 3 std devs, flag anything above it
         self.threshold = self._compute_threshold(X)
-        print(f"[Trainer] Training complete. Anomaly threshold={self.threshold:.6f}")
+        print(f"[Trainer] Done. Anomaly threshold={self.threshold:.6f}")
         return True
 
     def _compute_threshold(self, X):

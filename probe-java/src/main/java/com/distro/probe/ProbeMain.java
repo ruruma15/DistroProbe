@@ -3,17 +3,10 @@ package com.distro.probe;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * DistroProbe - Java Probe Entry Point
- *
- * Flow:
- *   1. Measure latency → write into CircularBuffer
- *   2. Every FLUSH_INTERVAL measurements → drain buffer → stream via gRPC
- *   3. Repeat forever
- */
+// measure -> buffer -> flush to collector, repeat
 public class ProbeMain {
 
-    // ── Configuration (overridable via environment variables) ──────────────
+    // config — all overridable via env vars
     private static final String COLLECTOR_HOST  = getEnv("COLLECTOR_HOST",  "localhost");
     private static final int    COLLECTOR_PORT  = Integer.parseInt(getEnv("COLLECTOR_PORT", "50051"));
     private static final String PROBE_ID        = getEnv("PROBE_ID",        "java-probe-us-east");
@@ -22,11 +15,11 @@ public class ProbeMain {
     private static final int    FLUSH_INTERVAL  = Integer.parseInt(getEnv("FLUSH_INTERVAL",  "50"));
     private static final int    MEASURE_DELAY_MS= Integer.parseInt(getEnv("MEASURE_DELAY_MS","100"));
 
-    // ── Target hosts to measure latency against ────────────────────────────
+    // hosts to ping
     private static final List<String> TARGET_HOSTS = Arrays.asList(
-        "8.8.8.8",        // Google DNS
-        "1.1.1.1",        // Cloudflare DNS
-        "208.67.222.222"  // OpenDNS
+        "8.8.8.8",
+        "1.1.1.1",
+        "208.67.222.222"
     );
 
     public static void main(String[] args) throws Exception {
@@ -40,13 +33,12 @@ public class ProbeMain {
         System.out.printf("  Targets   : %s%n", TARGET_HOSTS);
         System.out.println("  Starting measurement loop...\n");
 
-        // Initialize core components
         CircularBuffer  buffer   = new CircularBuffer(BUFFER_CAPACITY);
         LatencyMeasurer measurer = new LatencyMeasurer(TARGET_HOSTS, 3000);
         GrpcProbeClient client   = new GrpcProbeClient(
                 COLLECTOR_HOST, COLLECTOR_PORT, PROBE_ID, REGION);
 
-        // Add shutdown hook for clean exit
+        // clean shutdown on ctrl+c
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 client.shutdown();
@@ -58,14 +50,14 @@ public class ProbeMain {
 
         int measurementCount = 0;
 
-        // ── Main measurement loop ──────────────────────────────────────────
+        // main loop
         while (true) {
-            // 1. Measure latency
+            // measure
             double latency = measurer.measure();
             String host    = measurer.currentHost();
 
             if (latency > 0) {
-                // 2. Write into circular buffer (zero allocation)
+                // write to buffer
                 buffer.write(latency);
                 measurementCount++;
                 System.out.printf("[Java Probe] #%d | host=%-15s | latency=%.2f ms | buffer=%d/%d%n",
@@ -75,7 +67,7 @@ public class ProbeMain {
                         measurementCount, host);
             }
 
-            // 3. Flush buffer to collector every FLUSH_INTERVAL measurements
+            // flush when batch is ready
             if (measurementCount > 0 && measurementCount % FLUSH_INTERVAL == 0) {
                 System.out.println("[Java Probe] Flushing buffer to collector...");
                 double[] batch = buffer.drainAll();
@@ -89,7 +81,7 @@ public class ProbeMain {
                 }
             }
 
-            // 4. Small delay between measurements
+            // pace the loop
             Thread.sleep(MEASURE_DELAY_MS);
         }
     }

@@ -14,15 +14,15 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ── Config ────────────────────────────────────────────────────────────────
-REDIS_HOST       = os.getenv('REDIS_HOST',        'localhost')
-REDIS_PORT       = int(os.getenv('REDIS_PORT',    '6379'))
-PROMETHEUS_PORT  = int(os.getenv('PROMETHEUS_PORT','8001'))
-RETRAIN_EVERY    = int(os.getenv('RETRAIN_EVERY', '300'))   # retrain every 5 min
-ANALYSIS_INTERVAL= int(os.getenv('ANALYSIS_INTERVAL', '10'))# run every 10 seconds
-MIN_TRAIN_SAMPLES= int(os.getenv('MIN_TRAIN_SAMPLES', '100'))
+# config
+REDIS_HOST        = os.getenv('REDIS_HOST',          'localhost')
+REDIS_PORT        = int(os.getenv('REDIS_PORT',       '6379'))
+PROMETHEUS_PORT   = int(os.getenv('PROMETHEUS_PORT',  '8001'))
+RETRAIN_EVERY     = int(os.getenv('RETRAIN_EVERY',    '300'))
+ANALYSIS_INTERVAL = int(os.getenv('ANALYSIS_INTERVAL','10'))
+MIN_TRAIN_SAMPLES = int(os.getenv('MIN_TRAIN_SAMPLES','100'))
 
-# ── Prometheus metrics ────────────────────────────────────────────────────
+# metrics
 anomaly_score_gauge = Gauge(
     'distro_anomaly_score',
     'Current anomaly score per probe',
@@ -75,7 +75,7 @@ def get_probe_timeseries(r, probe_id, limit=500):
             values.append(json.loads(item)['latency_ms'])
         except Exception:
             continue
-    return list(reversed(values))  # chronological order
+    return list(reversed(values))
 
 def run():
     r        = connect_redis()
@@ -99,14 +99,12 @@ def run():
                     model_trained_gauge.labels(probe_id=probe_id).set(0)
                     continue
 
-                # Initialize trainer for new probes
                 if probe_id not in trainers:
                     trainers[probe_id]   = AnomalyTrainer()
                     last_train[probe_id] = 0
 
                 trainer = trainers[probe_id]
 
-                # Train or retrain periodically
                 if now - last_train.get(probe_id, 0) > RETRAIN_EVERY:
                     log.info(f"[{probe_id}] Training LSTM on {len(values)} samples...")
                     success = trainer.train(values)
@@ -114,7 +112,6 @@ def run():
                         last_train[probe_id] = now
                         model_trained_gauge.labels(probe_id=probe_id).set(1)
 
-                # Score the latest window
                 if trainer.is_trained():
                     score, is_anomaly = trainer.score(values)
                     severity = get_severity(score)
@@ -128,13 +125,12 @@ def run():
                             severity=severity
                         ).inc()
 
-                        # Write alert to Redis for dashboard
                         alert = {
-                            "probe_id":     probe_id,
-                            "latency_ms":   values[-1] if values else 0,
+                            "probe_id":      probe_id,
+                            "latency_ms":    values[-1] if values else 0,
                             "anomaly_score": score,
-                            "severity":     severity,
-                            "detected_at":  now
+                            "severity":      severity,
+                            "detected_at":   now
                         }
                         r.lpush(f"alerts:{probe_id}", json.dumps(alert))
                         r.ltrim(f"alerts:{probe_id}", 0, 99)

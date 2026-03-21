@@ -5,8 +5,8 @@ import (
 	"unsafe"
 )
 
-// CircularBuffer is a lock-free ring buffer using atomic operations.
-// Pre-allocated at startup — zero heap allocation during measurement loop.
+// ring buffer, pre-allocated at startup
+// atomic ops keep it thread-safe without locks
 type CircularBuffer struct {
 	buffer     []float64
 	capacity   int64
@@ -16,15 +16,15 @@ type CircularBuffer struct {
 
 func NewCircularBuffer(capacity int64) *CircularBuffer {
 	return &CircularBuffer{
-		buffer:   make([]float64, capacity), // single allocation at startup
+		buffer:   make([]float64, capacity),
 		capacity: capacity,
 	}
 }
 
-// Write stores a latency value. Overwrites oldest entry when full.
+// overwrite oldest when full
 func (cb *CircularBuffer) Write(latencyMs float64) {
 	idx := cb.writeIndex.Add(1) - 1
-	// Direct memory write using unsafe for zero-allocation path
+	// unsafe write to skip allocation
 	*(*float64)(unsafe.Pointer(
 		uintptr(unsafe.Pointer(&cb.buffer[0])) +
 			uintptr(idx%cb.capacity)*8,
@@ -35,13 +35,13 @@ func (cb *CircularBuffer) Write(latencyMs float64) {
 	}
 }
 
-// ReadLatest returns the most recently written value.
+// last value written
 func (cb *CircularBuffer) ReadLatest() float64 {
 	idx := (cb.writeIndex.Load() - 1 + cb.capacity) % cb.capacity
 	return cb.buffer[idx]
 }
 
-// DrainAll returns a snapshot of all current values.
+// snapshot current contents
 func (cb *CircularBuffer) DrainAll() []float64 {
 	count := cb.size.Load()
 	if count == 0 {

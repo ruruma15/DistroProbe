@@ -12,10 +12,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * gRPC client that streams LatencyMetric messages to the Python Collector.
- * Uses client-side streaming: one stream, many metrics, one acknowledgement.
- */
+// Streams latency metrics to the collector over gRPC.
+// Opens one stream per batch, sends all metrics, waits for ack.
 public class GrpcProbeClient {
 
     private final ManagedChannel                          channel;
@@ -28,17 +26,13 @@ public class GrpcProbeClient {
                            String probeId, String region) {
         this.channel = ManagedChannelBuilder
                 .forAddress(collectorHost, collectorPort)
-                .usePlaintext() // no TLS for local/dev environment
+                .usePlaintext() // no TLS in dev
                 .build();
         this.stub    = TelemetryServiceGrpc.newStub(channel);
         this.probeId = probeId;
         this.region  = region;
     }
 
-    /**
-     * Streams an array of latency readings to the collector in one gRPC call.
-     * Returns the number of metrics successfully sent.
-     */
     public int streamMetrics(double[] latencies, String targetHost) throws InterruptedException {
         CountDownLatch latch    = new CountDownLatch(1);
         int[]          stored   = {0};
@@ -67,7 +61,7 @@ public class GrpcProbeClient {
 
         try {
             for (double latency : latencies) {
-                if (latency < 0) continue; // skip failed measurements
+                if (latency < 0) continue;
                 LatencyMetric metric = LatencyMetric.newBuilder()
                         .setProbeId(probeId)
                         .setTargetHost(targetHost)

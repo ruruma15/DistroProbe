@@ -10,13 +10,13 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// GrpcProbeClient streams metrics to the Python collector.
+// sends metric batches to the collector over gRPC
 type GrpcProbeClient struct {
-	conn          *grpc.ClientConn
-	client        pb.TelemetryServiceClient
-	probeID       string
-	region        string
-	sequenceNum   int32
+	conn        *grpc.ClientConn
+	client      pb.TelemetryServiceClient
+	probeID     string
+	region      string
+	sequenceNum int32
 }
 
 func NewGrpcProbeClient(host string, port int, probeID, region string) (*GrpcProbeClient, error) {
@@ -33,7 +33,7 @@ func NewGrpcProbeClient(host string, port int, probeID, region string) (*GrpcPro
 	}, nil
 }
 
-// StreamMetrics sends a batch of latency readings to the collector.
+// stream a batch, wait for ack
 func (g *GrpcProbeClient) StreamMetrics(results []MeasurementResult) (int32, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

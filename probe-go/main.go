@@ -7,21 +7,21 @@ import (
 	"time"
 )
 
-// ── Configuration from environment variables ──────────────────────────────
+// config
 var (
-	collectorHost  = getEnv("COLLECTOR_HOST",   "localhost")
-	collectorPort  = getEnvInt("COLLECTOR_PORT", 50051)
-	probeID        = getEnv("PROBE_ID",          "go-probe-us-west")
-	region         = getEnv("REGION",            "us-west-1")
-	bufferCapacity = getEnvInt("BUFFER_CAPACITY", 1024)
-	flushInterval  = getEnvInt("FLUSH_INTERVAL",  50)
+	collectorHost  = getEnv("COLLECTOR_HOST",    "localhost")
+	collectorPort  = getEnvInt("COLLECTOR_PORT",  50051)
+	probeID        = getEnv("PROBE_ID",           "go-probe-us-west")
+	region         = getEnv("REGION",             "us-west-1")
+	bufferCapacity = getEnvInt("BUFFER_CAPACITY",  1024)
+	flushInterval  = getEnvInt("FLUSH_INTERVAL",   50)
 	measureDelayMs = getEnvInt("MEASURE_DELAY_MS", 100)
 )
 
 var targetHosts = []string{
-	"8.8.8.8",       // Google DNS primary
-	"1.1.1.1",       // Cloudflare DNS
-	"208.67.222.222", // OpenDNS
+	"8.8.8.8",
+	"1.1.1.1",
+	"208.67.222.222",
 }
 
 func main() {
@@ -35,7 +35,6 @@ func main() {
 	fmt.Printf("  Targets   : %v\n", targetHosts)
 	fmt.Println("  Starting concurrent measurement loop...\n")
 
-	// Initialize components
 	buffer   := NewCircularBuffer(int64(bufferCapacity))
 	measurer := NewConcurrentMeasurer(targetHosts, 3000)
 	client, err := NewGrpcProbeClient(collectorHost, collectorPort, probeID, region)
@@ -49,9 +48,9 @@ func main() {
 
 	measurementCount := 0
 
-	// ── Main measurement loop ──────────────────────────────────────────────
+	// main loop
 	for {
-		// Measure ALL hosts concurrently in parallel goroutines
+		// hit all hosts at once
 		results := measurer.MeasureAll()
 
 		for _, result := range results {
@@ -66,11 +65,10 @@ func main() {
 			}
 		}
 
-		// Flush to collector every flushInterval measurements
+		// flush when batch is ready
 		if measurementCount > 0 && measurementCount%flushInterval == 0 {
 			fmt.Println("[Go Probe] Flushing buffer to collector...")
 			if client == nil {
-				// Retry connection
 				client, err = NewGrpcProbeClient(collectorHost, collectorPort, probeID, region)
 				if err != nil {
 					fmt.Printf("[Go Probe] Reconnect failed: %v\n", err)

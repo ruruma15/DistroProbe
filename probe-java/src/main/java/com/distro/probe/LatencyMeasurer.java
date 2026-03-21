@@ -17,17 +17,14 @@ public class LatencyMeasurer {
         this.timeoutMs   = timeoutMs;
     }
 
-    /**
-     * Measures latency to the next host in round-robin rotation.
-     * Returns latency in milliseconds, or -1 if host is unreachable.
-     */
+    // returns ms, -1 if unreachable
     public double measure() {
         String host = targetHosts.get(hostIndex % targetHosts.size());
         hostIndex++;
 
         long start = System.nanoTime();
         try {
-            // TCP handshake to port 80 — accurate network RTT measurement
+            // TCP connect to port 80, time the handshake
             try (Socket socket = new Socket()) {
                 socket.connect(
                     new java.net.InetSocketAddress(host, 80),
@@ -35,16 +32,16 @@ public class LatencyMeasurer {
                 );
             }
             long elapsed = System.nanoTime() - start;
-            return elapsed / 1_000_000.0; // convert nanoseconds to milliseconds
+            return elapsed / 1_000_000.0; // ns -> ms
         } catch (Exception e) {
-            // Host unreachable or timed out — use ICMP ping as fallback
+            // port 80 blocked, try ICMP fallback
             try {
                 long pingStart = System.nanoTime();
                 InetAddress.getByName(host).isReachable(timeoutMs);
                 long elapsed = System.nanoTime() - pingStart;
                 return elapsed / 1_000_000.0;
             } catch (Exception ex) {
-                return -1.0; // unreachable
+                return -1.0;
             }
         }
     }

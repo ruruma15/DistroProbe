@@ -7,14 +7,13 @@ import grpc
 from concurrent import futures
 from prometheus_client import start_http_server, Counter, Histogram, Gauge
 
-# Add generated stubs to path
 sys.path.insert(0, '/app')
 
 import telemetry_pb2
 import telemetry_pb2_grpc
 import redis
 
-# ── Logging ───────────────────────────────────────────────────────────────
+# logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [Collector] %(message)s',
@@ -22,14 +21,14 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ── Config ────────────────────────────────────────────────────────────────
+# config
 GRPC_PORT       = int(os.getenv('GRPC_PORT',       '50051'))
 REDIS_HOST      = os.getenv('REDIS_HOST',           'localhost')
 REDIS_PORT      = int(os.getenv('REDIS_PORT',       '6379'))
 PROMETHEUS_PORT = int(os.getenv('PROMETHEUS_PORT',  '8000'))
 REDIS_TTL       = int(os.getenv('REDIS_TTL',        '3600'))
 
-# ── Prometheus metrics ────────────────────────────────────────────────────
+# metrics
 metrics_received = Counter(
     'distro_metrics_received_total',
     'Total metrics received from probes',
@@ -50,7 +49,7 @@ redis_write_errors = Counter(
     'Redis write failures'
 )
 
-# ── Redis connection ──────────────────────────────────────────────────────
+# redis
 def connect_redis():
     for attempt in range(10):
         try:
@@ -68,7 +67,7 @@ def connect_redis():
             time.sleep(2)
     raise RuntimeError("Could not connect to Redis after 10 attempts")
 
-# ── gRPC Service ──────────────────────────────────────────────────────────
+# grpc handler
 class TelemetryServicer(telemetry_pb2_grpc.TelemetryServiceServicer):
 
     def __init__(self, redis_client):
@@ -80,7 +79,7 @@ class TelemetryServicer(telemetry_pb2_grpc.TelemetryServiceServicer):
         batch_start    = time.time()
 
         try:
-            pipe = self.redis.pipeline()
+            pipe = self.redis.pipeline()  # batch all writes, one round trip
 
             for metric in request_iterator:
                 if metric.latency_ms <= 0:
@@ -144,7 +143,7 @@ class TelemetryServicer(telemetry_pb2_grpc.TelemetryServiceServicer):
             metrics_stored=metrics_stored
         )
 
-# ── Server startup ────────────────────────────────────────────────────────
+# startup
 def serve():
     redis_client = connect_redis()
 

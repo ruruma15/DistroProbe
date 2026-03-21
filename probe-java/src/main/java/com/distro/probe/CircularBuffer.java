@@ -2,30 +2,24 @@ package com.distro.probe;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Lock-free circular buffer using a pre-allocated array.
- * Avoids heap allocation at runtime = zero GC pressure.
- * This is the same pattern used in HFT (High Frequency Trading) systems.
- */
+// Pre-allocated ring buffer. Fixed size array claimed at startup,
+// never reallocated. Keeps GC out of the hot path.
 public class CircularBuffer {
 
-    // Pre-allocated slots — memory is claimed once at startup, never again
+    // claim memory once, never again
     private final double[] buffer;
     private final int capacity;
 
-    // Atomic counters for thread-safe head/tail without locks
+    // atomic so multiple threads can write without locking
     private final AtomicInteger writeIndex = new AtomicInteger(0);
     private final AtomicInteger size       = new AtomicInteger(0);
 
     public CircularBuffer(int capacity) {
         this.capacity = capacity;
-        this.buffer   = new double[capacity]; // single allocation at startup
+        this.buffer   = new double[capacity];
     }
 
-    /**
-     * Write a latency value into the buffer.
-     * If full, overwrites the oldest entry (ring behavior).
-     */
+    // write next value, wrap around if full
     public void write(double latencyMs) {
         int idx = writeIndex.getAndIncrement() % capacity;
         buffer[idx] = latencyMs;
@@ -34,17 +28,13 @@ public class CircularBuffer {
         }
     }
 
-    /**
-     * Read the most recently written latency value.
-     */
+    // latest value written
     public double readLatest() {
         int idx = (writeIndex.get() - 1 + capacity) % capacity;
         return buffer[idx];
     }
 
-    /**
-     * Drain all current values into a new array for batch gRPC streaming.
-     */
+    // snapshot everything currently in the buffer
     public double[] drainAll() {
         int count = size.get();
         double[] snapshot = new double[count];
