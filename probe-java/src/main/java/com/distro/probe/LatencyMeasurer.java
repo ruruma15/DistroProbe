@@ -4,10 +4,8 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.util.List;
 
-/**
- * Measures network latency to a target host.
- * Uses TCP socket connection timing for accurate sub-millisecond measurement.
- */
+// Times TCP connections to target hosts.
+// Rotates through hosts round-robin.
 public class LatencyMeasurer {
 
     private final List<String> targetHosts;
